@@ -1,0 +1,62 @@
+# Ignore build directories
+build/
+out/
+Release/
+Debug/
+x64/
+x86/
+
+# CMake specific files to ignore
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+cmake-*
+
+# Ignore Visual Studio specific files
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.userosscache
+*.aps
+*.pch
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.sdf
+*.idb
+*.ipch
+*.ilk
+*.map
+*.pdb
+*.props
+*.psess
+*.rsp
+*.sbr
+*.tlog
+*.tlh
+*.tli
+*.vcpkg.installed.xml
+*.vshost.*
+*.vsix
+*.vssettings
+*.vssscc
+*.idea
+
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+
+# Additional binaries and executables to ignore
+*.exe
+*.dll
+*.so
+*.dylib
