@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -34,7 +35,7 @@ enum class CompressionType : uint8_t
 	None
 };
 
-struct alignas(128) File
+struct File
 {
 	uint64_t offset{};
 	uint64_t uncompressedSize{};
@@ -50,16 +51,17 @@ struct alignas(128) File
 
 	FileType type{};
 	CompressionType compression = CompressionType::None;
+	uint8_t padding[6]{};
 };
 static_assert(sizeof(File) == 128, "File size mismatch");
 
-struct alignas(32) Header
+struct Header
 {
 	char magic[8] = "ORGPACK";
-	uint8_t version = 1;
+	uint32_t version = 1;
 	uint32_t fileCount = 0;
-	uint64_t indexOffset = 0; // a way to keep the offsets of each file
-	uint8_t flags = 0; // for future use
+	uint64_t indexOffset = 0; // location of dict
+	uint8_t padding[8]{};
 };
 static_assert(sizeof(Header) == 32, "Header size mismatch");
 
@@ -116,6 +118,9 @@ FileType DetermineFileType(const File& file)
 
 void PackFiles(const std::string& directory, const std::string& outputFile, CompressionType compression = CompressionType::None)
 {
+	constexpr std::streamoff alignment = 16;
+	std::array<char, alignment> padding{};
+
 	// Sanity checks
 	if (!fs::exists(directory))
 	{
@@ -141,6 +146,7 @@ void PackFiles(const std::string& directory, const std::string& outputFile, Comp
 	std::vector<File> fileIndex;
 
 	outFile.write(reinterpret_cast<const char*>(&header), sizeof(header)); // writing this first
+	outFile.write(padding.data(), alignment);
 
 	for (const auto& fileEntry : fs::recursive_directory_iterator(directory))
 	{
@@ -196,11 +202,15 @@ void PackFiles(const std::string& directory, const std::string& outputFile, Comp
 			outFile.write(fileBuffer.data(), fileSize);
 		}
 
+		outFile.write(padding.data(), alignment);
+
 		fileIndex.push_back(file);
 	}
 
-	// Write the file index at the end of the file
-	uint64_t indexOffset = outFile.tellp();
+	// Align to 16 bytes before TOC starts
+	outFile.write(padding.data(), alignment);
+	header.indexOffset = static_cast<uint64_t>(outFile.tellp());
+
 	for (const auto& file : fileIndex)
 	{
 		outFile.write(reinterpret_cast<const char*>(&file), sizeof(File));
@@ -208,7 +218,6 @@ void PackFiles(const std::string& directory, const std::string& outputFile, Comp
 
 	// Rewrite the header with real values
 	header.fileCount = static_cast<uint32_t>(fileIndex.size());
-	header.indexOffset = indexOffset;
 
 	outFile.seekp(0, std::ios::beg);
 	outFile.write(reinterpret_cast<const char*>(&header), sizeof(header));
